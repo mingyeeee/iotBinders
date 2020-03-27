@@ -7,6 +7,7 @@ struct Binder
 {
 	string subject;
 	int xAxisMotion[50];
+	int indexer =0;
 	int xPos, yPos, zPos;
 	int lightingVal;
 };
@@ -28,7 +29,7 @@ int main() {
 	bindersPresent = initializationInfo[0] - '0';
 	struct Binder binder[bindersPresent];
 	cout << bindersPresent << endl;
-	int binderID;
+	int binderID;//used as a temporary id for binder objects
 	string tempSubject;
 	for(unsigned int i=1; i<initializationInfo.length(); i++){
 		if(initializationInfo.at(i) == 'B'){
@@ -51,6 +52,34 @@ int main() {
 	getFileContent(bindersMotion, biMotion);
 	
 	cout << bindersMotion << endl;
+	string motionVal;
+	for(unsigned int i=0;i<bindersMotion.length();i++){
+		if(bindersMotion.at(i)=='B'){
+			binderID = bindersMotion.at(i+1)-'0';
+			
+			//add 3 to also account for the '.'
+			for(unsigned int j=i+2;j<bindersMotion.length();j++){
+				if(bindersMotion.at(j) == 'B'){
+					i = j-1;
+					break;	
+				}
+				if(bindersMotion.at(j)==','){
+					binder[binderID-1].xAxisMotion[binder[binderID-1].indexer]=stoi(motionVal);
+					binder[binderID-1].indexer++;
+					motionVal.clear();
+				}
+				if(isdigit(bindersMotion.at(j))){
+					motionVal += bindersMotion.at(j);
+				}
+			}
+		}
+	}
+	
+	for(unsigned int i=0; i<50;i++){
+		cout << "index" << i << endl;
+		cout << "binder 1 " << binder[0].xAxisMotion[i] << endl;
+		cout << "binder 2 " << binder[1].xAxisMotion[i] << endl;
+	}
 	
 	return 0;
 }
@@ -69,3 +98,5 @@ void getFileContent(string &contents, string filePath)
 	}
 	else cout << "Unable to open file";
 }
+
+
