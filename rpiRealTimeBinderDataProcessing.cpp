@@ -1,7 +1,9 @@
+//make sure initialization file has content
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
+
 using namespace std;
 
 struct Binder
@@ -10,12 +12,14 @@ struct Binder
 	int xAxisMotion[50];
 	int indexer =0;
 	int xPos, yPos, zPos;
-	int lightingVal;
+	int lightingVal; 
+	bool inBag;
 };
 
 void getFileContent(string &bindersMotion, string filePath);
 void fillBinderSubjects(vector<Binder> &binder, string &initializationInfo);
 void fillBinderMotion(vector<Binder> &binder, string &binderMotion);
+bool readIfMotionIsDetected();
 
 int main() {
 	string initializationInfo;
@@ -35,17 +39,29 @@ int main() {
 	
 	fillBinderSubjects(binder,initializationInfo);
 	
-	getFileContent(bindersMotion, biMotion);
-	
-	cout << bindersMotion << endl;
-	fillBinderMotion(binder,bindersMotion);
-	
-	for(unsigned int i=0; i<50;i++){
-		cout << "index" << i << endl;
-		cout << "binder 1 " << binder.at(0).xAxisMotion[i] << endl;
-		cout << "binder 2 " << binder.at(1).xAxisMotion[i] << endl;
+	bool inMotion;
+	while (true){
+		inMotion = readIfMotionIsDetected();
+		if(inMotion){
+			getFileContent(bindersMotion, biMotion);
+		
+			cout << bindersMotion << endl;
+			fillBinderMotion(binder,bindersMotion);
+			for(unsigned int i=0; i<50;i++){
+				cout << "index" << i << endl;
+				cout << "binder 1 " << binder.at(0).xAxisMotion[i] << endl;
+				cout << "binder 2 " << binder.at(1).xAxisMotion[i] << endl;
+			}
+		}
+		
+		//if()
+		
+		break;
+		
+		/*
+		
+		*/
 	}
-	
 	return 0;
 }
 
@@ -63,7 +79,7 @@ void getFileContent(string &contents, string filePath)
 	}
 	else cout << "Unable to open file";
 }
-
+//populates binder's subjects from a file 
 void fillBinderSubjects(vector<Binder> &binder, string &initializationInfo){
 	int binderID;//used as a temporary id for binder objects
 	string tempSubject;
@@ -85,7 +101,7 @@ void fillBinderSubjects(vector<Binder> &binder, string &initializationInfo){
 		}
 	}
 }
-
+//populates the binder xAxisMotion array from file
 void fillBinderMotion(vector<Binder> &binder, string &bindersMotion){
 	int binderID;
 	string motionVal;
@@ -111,3 +127,32 @@ void fillBinderMotion(vector<Binder> &binder, string &bindersMotion){
 		}
 	}
 }
+//read file which mpu.c writes if motion is detected
+bool readIfMotionIsDetected(){
+	bool motionDetected;
+	string filePath = "/home/pi/iotBinder/isMotionDetected.txt";
+	string line;
+	ifstream myfile (filePath);
+	if (myfile.is_open()){
+		while(getline(myfile,line)){
+			//cout << line << '\n';
+			if(line.compare("1")==0){
+				motionDetected = true;
+				break;
+			}
+			else{
+				motionDetected = false;
+			}
+		}
+		myfile.close();
+	}
+	else cout << "Unable to open file";
+	//clear file
+	if(motionDetected){
+		myfile.open(filePath, ios::out | ios::trunc);
+		myfile.close();
+	}
+	
+	return motionDetected;
+}
+
