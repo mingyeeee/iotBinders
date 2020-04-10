@@ -55,7 +55,8 @@ while(1) {
    acclY = (int)acclY / 1000;
    acclZ = (int)acclZ / 1000;
    /*
-   printf("X %d\n", acclX);
+   printf("X %d\n", acclX+32);
+   
    printf("Y %d\n", acclY);
    printf("Z %d\n", acclZ);
    */
@@ -69,7 +70,8 @@ while(1) {
       mpuX[99] = acclX;
       fptr = fopen("/home/pi/iotBinder/mpuXData.txt","w");
       for(int i=0; i<100;i++){
-         fprintf(fptr,"%d\n",mpuX[i]);
+         //all positive numbers
+         fprintf(fptr,"%d\n",mpuX[i]+42);
       }
       fclose(fptr);
       motionInstanceCounter = 0;
