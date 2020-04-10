@@ -1,8 +1,9 @@
-//make sure initialization file has content
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
+#include <cstdlib>
+#include <unistd.h>
 
 using namespace std;
 
@@ -13,14 +14,16 @@ struct Binder
 	int indexer =0;
 	int xPos, yPos, zPos;
 	int lightingVal; 
-	bool inBag;
+	bool inBag=true;
 };
 
-void getFileContent(string &bindersMotion, string filePath, bool clearFile);
+void getFileContent(string &bindersMotion, string &filePath, bool clearFile);
 void fillBinderSubjects(vector<Binder> &binder, string &initializationInfo);
 void fillBinderMotion(vector<Binder> &binder, string &binderMotion);
 bool readIfMotionIsDetected();
+void analysisBinderMotion(vector<Binder> &binder);
 vector<int> checkForBinderUpdates(vector<Binder> binder);
+void requestBinderMotion();
 
 int main() {
 	string initializationInfo;
@@ -44,43 +47,37 @@ int main() {
 	while (true){
 		inMotion = readIfMotionIsDetected();
 		if(inMotion){
+			requestBinderMotion();
+			sleep(5);
 			getFileContent(bindersMotion, biMotion, true);
 		
 			cout << bindersMotion << endl;
 			fillBinderMotion(binder,bindersMotion);
-			/*for(unsigned int i=0; i<50;i++){
-				cout << "index" << i << endl;
-				cout << "binder 1 " << binder.at(0).xAxisMotion[i] << endl;
-				cout << "binder 2 " << binder.at(1).xAxisMotion[i] << endl;
-			}*/
+			cout << "starting analysis" << endl;
+			analysisBinderMotion(binder);
+			cout << "done analysis" << endl;
+			
 		}
 		
-		//if()
-		
-		break;
-		
-		/*
-		
-		*/
 	}
 	return 0;
 }
 
-void getFileContent(string &contents, string filePath, bool clearFile)
-{
+void getFileContent(string &contents, string &filePath, bool clearFile){
 	string line;
 	ifstream myfile (filePath);
 	if (myfile.is_open()){
 		while(getline(myfile,line)){
 			//cout << line << '\n';
-			contents = contents.append(line);
+			contents +=line;
 			
 		}
 		myfile.close();
 	}
-	else cout << "Unable to open file";
+	else cout << "Unable to open file"<<endl;
 	
 	if(clearFile){
+		//cout << "deleting contents" << endl;
 		myfile.open(filePath, ios::out | ios::trunc);
 		myfile.close();
 	}
@@ -145,6 +142,57 @@ bool readIfMotionIsDetected(){
 	return motionDetected;
 }
 
+//updates binder struct boolean inBag 
+void analysisBinderMotion(vector<Binder> &binder){
+	string mpuData;
+	string fileName = "/home/pi/iotBinder/mpuXData.txt";
+	int piMotion[100];
+	int indexer=0;
+	cout << "geting mpudata" << endl;
+	getFileContent(mpuData, fileName, true);
+	cout << "mpuData " << mpuData << endl; 
+	//populatint array with file content
+	for(unsigned int j=0; j<mpuData.length(); j+=2){
+
+		piMotion[indexer]= (mpuData.at(j)-'0')*10+(mpuData.at(j+1)-'0');
+		cout<< "piMotion " << piMotion[indexer]<<endl;
+		indexer++;
+
+	}
+	cout<< "indexer: "<< indexer << endl;
+	int withinThreshold;
+	int threshold = 10;
+	bool tempinbag=false;
+	for(unsigned int b=0; b < binder.size();b++){
+		for(auto i=0; i<50; i++){
+			withinThreshold = 0;
+			for(auto j=i; j<i+50; j++){
+				if(abs(binder.at(b).xAxisMotion[j]-piMotion[j])<threshold){
+					withinThreshold++;
+				}
+			}
+			cout << "similarity test "<< i << ": "<< withinThreshold << endl;
+			if(withinThreshold >=20){
+				binder.at(b).inBag =true;
+				cout << "binder in bag" << endl;
+				tempinbag = true;
+				break;
+			}
+		}
+	}
+	if(!tempinbag){
+		cout << "not in bag"<< endl;
+	}
+
+}
+
+void requestBinderMotion(){
+	ofstream myfile;
+	myfile.open ("/home/pi/iotBinder/piMotion.txt",ios::out | ios::trunc);
+	myfile << "yes";
+	myfile.close();
+}
+
 //unused for now
 //returns a vector with which binders have been updated
 vector<int> checkForBinderUpdates(vector<Binder> &binder){
@@ -194,5 +242,4 @@ vector<int> checkForBinderUpdates(vector<Binder> &binder){
 	}
 	return binderIDs;
 }
-
 
