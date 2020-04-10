@@ -1,3 +1,7 @@
+//NOTE:
+//ALL MPU VALUES HAVE 32 ADDED TO PREVENT NEGETIVE NUMBERS
+//
+//
 #include "I2Cdev.h"
 #include "MPU6050.h"
 
@@ -18,14 +22,20 @@ int16_t ax, ay, az;
 // not so easy to parse, and slow(er) over UART.
 #define OUTPUT_READABLE_ACCELGYRO
 //--------------------^mpu stuff-------------------------
-
+//--------------------Other sensors---------------------
+int lightingChange = 17;
+int orientationChange = 16;
+int pResistor = 27;//adc gpio
+int lightValue;
+char dataMessage[100];
+//--------------------MQTT stuff-------------------------
 #include <WiFi.h>
 #include <PubSubClient.h>
 
 const char *ssid =  "BELL652";   // name of your WiFi network
 const char *password =  "25594ECFF7F7";//"iotbinder"; // password of the WiFi network
 
-const char *ID = "Binder1";  // Name of our device, must be unique
+const char *ID = "B1";  // Name of our device, must be unique
 
 IPAddress broker(192,168,2,131); // IP address of your MQTT broker eg. 192.168.1.50
 WiFiClient wclient;
@@ -49,21 +59,39 @@ void callback(char* topic, byte* payload, unsigned int length) {
   char motion[50];
   for (int i=0; i<50; i++){
     accelgyro.getAcceleration(&ax, &ay, &az);
-    motion[i] = char(int(ax)/1000);
-    Serial.println(int(ax)/1000); Serial.print(" ");
+    motion[i] = char((int(ax)/1000)+32);
+    Serial.println((int(ax)/1000)+42); Serial.print(" ");
     delay(50);
   }
   delay(1000);
-/*
-  String motionData = "binder1 ";
-  char temp;
-  for (int i=0; i<50; i++){
-    temp = motion[i];
-    motionData = String(temp) + ",";
-    //strcat(biMotion, space);
-  }*/
+  //form strings to publish 
+  char mpudata[100];
+  char temp[100];
+  //1st packet-----------------------
+  sprintf(temp, "%s.", ID);
+  for (int i=0; i<17; i++){
+    sprintf(mpudata, "%s%d,", temp, motion[i]);
+    sprintf(temp, "%s", mpudata);
+  }
   
-  client.publish("binderMotion", "ae");
+  client.publish("binderMotion", mpudata);
+  //2nd packet---------------------
+  sprintf(temp, "%s.", ID);
+  for (int i=17; i<35; i++){
+    sprintf(mpudata, "%s%d,", temp, motion[i]);
+    sprintf(temp, "%s", mpudata);
+  }
+  
+  client.publish("binderMotion", mpudata);
+  //3rd packet----------------------
+  sprintf(temp, "%s.", ID);
+  for (int i=35; i<50; i++){
+    sprintf(mpudata, "%s%d,", temp, motion[i]);
+    sprintf(temp, "%s", mpudata);
+  }
+  
+  client.publish("binderMotion", mpudata);
+  
   delay(500);
   //---------------------------------------------------------------------
 }
@@ -127,6 +155,9 @@ void setup() {
   setup_wifi(); // Connect to network
   client.setServer(broker, 1883);
   client.setCallback(callback);// Initialize the callback routine
+//------------------------------
+  pinMode(lightingChange, INPUT);
+  pinMode(orientationChange, INPUT);
 }
 
 void loop() {
@@ -135,4 +166,10 @@ void loop() {
     reconnect();
   }
   client.loop();
+
+  if(digitalRead(lightingChange)==HIGH){
+    lightValue = analogRead(pResistor);
+    sprintf(dataMessage, "%s %d", ID, lightValue);
+    client.publish("binderLightOrientation", dataMessage);
+  }
 }
