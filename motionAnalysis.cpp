@@ -23,6 +23,7 @@ using namespace std;
 static int stop=0;
 static vector<int> piMPU;
 static bool motionDetected = false;
+//static bool notcopying = true;
 //------------------mpu monitoring------------------------
 static int fd;
 int read_word_2c(int addr){
@@ -50,8 +51,8 @@ int motionMonitoring(int (*read_word_2cPTR)(int)){
     vector<int>::iterator it;
     int motionDetectedCounter;
     int vsize;
-    while(true)
-    {
+    while(true){
+	//while(notcopying){
         x = read_word_2c(0x3B);
         y = read_word_2c(0x3D);
         z = read_word_2c(0x3F);
@@ -86,6 +87,8 @@ int motionMonitoring(int (*read_word_2cPTR)(int)){
 	    break;
 	}
 	sleep(0.05);
+    //}
+    //cout << "motion monitoring thread -----PAUSED------" << endl;
     }
 }
 //--------------------------stop all thread--------------------------------
@@ -107,7 +110,8 @@ struct Binder
 
 void getFileContent(string &bindersMotion, string filePath, bool clearFile);
 void fillBinderSubjects(vector<Binder> &binder, string &initializationInfo);
-void analysisBinderMotion(vector<Binder> &binder);
+void fillBinderMotion(vector<Binder> &binder);
+void analysisBinderMotion(vector<Binder> &binder, vector<int> &piMPUsnapshot);
 void requestBinderMotion();
 
 int main(){
@@ -119,9 +123,6 @@ int main(){
     string binderInitializationInfo = "/home/pi/iotBinder/binderInitializationInfo.txt";
     int bindersPresent;
 
-    string bindersMotion;
-    string biMotion = "/home/pi/iotBinder/biMotion.txt";
-
     //char binderID;
     getFileContent(initializationInfo, binderInitializationInfo, false);
     cout << initializationInfo << endl;
@@ -132,12 +133,23 @@ int main(){
     cout << "number of binders present: " << binder.size() << endl;
 
     fillBinderSubjects(binder,initializationInfo);
+
+    vector<int> piMPUsnapshot(piMPU);
     while(stop == 0){
 	if(motionDetected){
+	    cout << "motion detected" << "\n";
 	    motionDetected = false;
 	    requestBinderMotion();
+	    cout << "binder motion requested" << "\n";
 	    sleep(3.5);
-	    analysisBinderMotion(binder);
+	    //deep copy MPU data
+	    piMPUsnapshot.clear();
+	    cout << "copying piMPU" << "\n";
+	    copy(piMPU.begin(), piMPU.end(), back_inserter(piMPUsnapshot));
+	    cout << "retrieving binder motion data|| binder size" << binder.size() << "\n";
+	    fillBinderMotion(binder);
+	    cout << "starting analysis" << "\n";
+	    analysisBinderMotion(binder, piMPUsnapshot);
 	}
     }
     
@@ -188,10 +200,46 @@ void fillBinderSubjects(vector<Binder> &binder, string &initializationInfo){
     }
 }
 
+//populates the binder xAxisMotion array from file
+void fillBinderMotion(vector<Binder> &binder){
+    cout << "retrieving binder data" << "\n";
+    string bindersMotion;
+    string biMotion = "/home/pi/iotBinder/biMotion.txt";
+    getFileContent(bindersMotion, biMotion, true);
+    cout << "starting assignment" << "\n";
+    int binderID;
+    string motionVal;
+    //reset counters
+    for(unsigned int i=0;i<binder.size(); i++){
+	binder.at(i).indexer = 0;
+    }
+    //assign the data from the txt file to binder struct
+    for(unsigned int i=0;i<bindersMotion.length();i++){
+	if(bindersMotion.at(i)=='B'){
+	    binderID = bindersMotion.at(i+1)-'0';
+	    
+	    //add 3 to also account for the '.'
+	    for(unsigned int j=i+2;j<bindersMotion.length();j++){
+		if(bindersMotion.at(j) == 'B'){
+		    i = j-1;
+		    break;	
+		}
+		if(bindersMotion.at(j)==','){
+		    binder.at(binderID-1).xAxisMotion[binder.at(binderID-1).indexer]=stoi(motionVal);
+		    binder.at(binderID-1).indexer++;
+		    motionVal.clear();
+		}
+		if(isdigit(bindersMotion.at(j))){
+		    motionVal += bindersMotion.at(j);
+		}
+	    }
+	}
+    }
+}
+
 //updates binder struct boolean inBag
-void analysisBinderMotion(vector<Binder> &binder){
-    //deep copy
-    vector<int> piMPUsnapshot(piMPU);
+void analysisBinderMotion(vector<Binder> &binder, vector<int> &piMPUsnapshot){
+
     cout << "analysis function" << "\n";
 
     int withinThreshold;
@@ -209,7 +257,11 @@ void analysisBinderMotion(vector<Binder> &binder){
             cout << "similarity test "<< i << ": "<< withinThreshold << "\n";
             if(withinThreshold >= matchingThreshold){
                 binder.at(b).inBag =true;
-                cout << "binder in bag" << "\n";
+                
+		for(auto j=i; j<i+50; j++){
+		    cout << "binder: " << binder.at(b).xAxisMotion[j] << "pi MPU: " << piMPUsnapshot.at(j) << "\n";
+		}
+		cout << "binder in bag" << endl;
                 tempinbag = true;
                 break;
             }
