@@ -32,12 +32,12 @@ char dataMessage[100];
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-const char *ssid =  "BELL652";   // name of your WiFi network
-const char *password =  "25594ECFF7F7";//"iotbinder"; // password of the WiFi network
+const char *ssid =  "YOUR WIFI";   // name of your WiFi network
+const char *password =  "YOUR PASSWORD";//"iotbinder"; // password of the WiFi network
 
 const char *ID = "B1";  // Name of our device, must be unique
 
-IPAddress broker(192,168,2,131); // IP address of your MQTT broker eg. 192.168.1.50
+IPAddress broker(YOUR IP ADDR); // IP address of your MQTT broker eg. 192,168,1,50
 WiFiClient wclient;
 
 PubSubClient client(wclient); // Setup MQTT client
