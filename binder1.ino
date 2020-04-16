@@ -59,7 +59,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   char motion[50];
   for (int i=0; i<50; i++){
     accelgyro.getAcceleration(&ax, &ay, &az);
-    motion[i] = char((int(ax)/1000)+32);
+    motion[i] = char((int(ax)/1000)+42);
     Serial.println((int(ax)/1000)+42); Serial.print(" ");
     delay(50);
   }
