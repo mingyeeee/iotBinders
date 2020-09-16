@@ -3,7 +3,7 @@ Using micropocessors and microcontrollers with an accelerometer on your binders 
 It uses an array of ESP32 nodes with accelerometers (one per binder) and a raspberry pi zero as a gateway also with an accelerometer.
 
 ## How it Works
-The purpose of the system is to notify the user if they are forgetting something in their bag. When a binder is not in the bag, its motion will be different than the binders moving in unison in the backpack.
+The purpose of the system is to notify the user if they are forgetting something in their bag. When a binder is not in the bag, its motion will be different than the backpack.
 
 ## Hardware
 ### ESP32 and MPU6050
