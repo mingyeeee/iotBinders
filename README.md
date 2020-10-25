@@ -15,3 +15,6 @@ The Raspberry pi acts as an IoT gateway and provides the ESP32 with a 2.4ghz LAN
 
 ## Project Status
 On hold as COVID-19 has delayed the international postage services. So I'm missing several components to make this project full functioning.
+
+2020-10-24
+Redoing all the code to improve efficency.
