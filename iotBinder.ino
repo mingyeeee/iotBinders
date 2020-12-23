@@ -1,3 +1,7 @@
+/*
+Mingye Chen 2020-12-22
+Gets accelerometer data and sends it to the raspberry pi via mqtt for data analysis
+*/
 #include "I2Cdev.h"
 #include "MPU6050.h"
 #include "Wire.h"
@@ -5,6 +9,8 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include "credentials.h"
+
+#define MQTT_MAX_PACKET_SIZE 256
 
 // MPU 6050 setup
 MPU6050 accelgyro;
@@ -50,17 +56,54 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // Read MPU data if semaphore is free
   xSemaphoreTake(mpu_semaphore, portMAX_DELAY);
   Serial.println("------------mqtt task-------------");
-  lastModifiedIndex = mpuIndex - 1;
+  lastModifiedIndex = (mpuIndex - 1 >= 0) ? mpuIndex - 1 : 49;
+  int mpuDataLocal[50];
   Serial.print("last index modified: "); Serial.println(lastModifiedIndex);
   Serial.print("mpuData reading : ");
   for(int i = 0; i < 50; i++){
-    Serial.print(mpuData[i]); Serial.print(", ");
+    mpuDataLocal[i] = mpuData[i];
+    Serial.print(mpuDataLocal[i]); Serial.print(", ");
   }
   Serial.println(" done read");
   xSemaphoreGive(mpu_semaphore);
-  client.publish("binderMotion", "data");
-  
-  delay(500);
+
+  // Rearranging circular array into linear
+  int index = (lastModifiedIndex==49)? 0 : lastModifiedIndex++;
+  int increment = 0;
+  int mpuDataInorder[50];
+  Serial.print("inorder data: ");
+  while(increment < 50){
+    mpuDataInorder[increment] = mpuDataLocal[index];
+    Serial.print(mpuDataInorder[increment]);
+    Serial.print(", ");
+    index++;
+    if(index >49) index = 0;
+    increment ++;
+  }
+  Serial.println("done");
+  {
+  // Response handling/parsing 
+  char mpuJson[128];
+  char temp[128] = "{\"B\":1,\"P\":1,\"data\":[";
+  for(int i = 0; i < 24; i++){
+    sprintf(mpuJson, "%s%d,", temp, mpuDataInorder[i]);
+    sprintf(temp, "%s", mpuJson);
+  }
+  sprintf(mpuJson, "%s%d]}", temp, mpuDataInorder[24]);
+  client.publish("binderMotion", mpuJson);
+  delay(100);
+  }
+  {
+  // Second Json package
+  char mpuJson[128];
+  char temp[128] = "{\"B\":1,\"P\":2,\"data\":[";
+  for(int i = 25; i < 49; i++){
+    sprintf(mpuJson, "%s%d,", temp, mpuDataInorder[i]);
+    sprintf(temp, "%s", mpuJson);
+  }
+  sprintf(mpuJson, "%s%d]}", temp, mpuDataInorder[49]);
+  client.publish("binderMotion", mpuJson);
+  }
   //---------------------------------------------------------------------
 }
 // Connect to WiFi network
